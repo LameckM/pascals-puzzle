@@ -35,3 +35,31 @@
 @keyframes answer-pop{0%{transform:scale(.82)}65%{transform:scale(1.12)}100%{transform:scale(1)}}
 @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
+
+
+/* Keep answer choices within reach while navigating long triangles */
+.has-floating-bank{padding-bottom:190px}
+.floating-answer-area{
+  position:fixed;
+  z-index:8;
+  left:50%;
+  bottom:calc(12px + env(safe-area-inset-bottom));
+  width:min(620px,calc(100vw - 28px));
+  margin:0;
+  padding:14px 16px 12px;
+  transform:translateX(-50%);
+  border:1px solid #52664f;
+  border-radius:15px;
+  background:rgba(25,34,27,.96);
+  box-shadow:0 12px 42px #0009,0 0 24px #9be2780b;
+  backdrop-filter:blur(16px);
+}
+.floating-answer-area .answer-label{align-items:center}
+.floating-answer-area .number-bank{grid-template-columns:repeat(7,minmax(0,1fr))}
+.floating-answer-area .tools{margin-top:9px}
+@media(max-width:560px){
+  .has-floating-bank{padding-bottom:205px}
+  .floating-answer-area{width:calc(100vw - 20px);padding:12px 11px calc(10px + env(safe-area-inset-bottom));bottom:0;border-radius:15px 15px 0 0}
+  .floating-answer-area .number-bank{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+  .floating-answer-area .number-bank button{height:38px}
+}
