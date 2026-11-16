@@ -147,7 +147,7 @@ export default function App() {
       <button className="help-icon" aria-label="How to play" onClick={() => setHelp(true)}><CircleHelp size={19}/></button>
     </header>
 
-    <main className="main">
+    <main className={'main ' + (started && !finished && tab === 'play' ? 'has-floating-bank' : '')}>
       {tab === 'play' ? <>
         <section className="intro">
           <div><div className="eyebrow"><Sparkles size={14}/> THE DAILY BRAIN WORKOUT</div><h1>Every number has<br/>a <em>pattern.</em></h1><p>Fill the gaps. Follow the pattern. Give your brain a little workout.</p></div>
@@ -170,7 +170,7 @@ export default function App() {
             </div></div>
             <div className="progress"><div><span>YOUR PROGRESS</span><b>{correctCount}/{puzzle.total}</b></div><div className="track"><i style={{width:(correctCount/puzzle.total*100)+'%'}}/></div></div>
             {finished ? <div className="win"><span className="win-icon"><Trophy size={24}/></span><div><b>Triangle complete!</b><small>Solved in {formatTime(seconds)} with {mistakes} mistakes.</small></div><strong>+{score} XP</strong><button className="primary" onClick={() => newGame()}>Next puzzle →</button></div> :
-              <div className="answer-area"><div className="answer-label"><b>CHOOSE A NUMBER</b><span>{selected ? 'Row ' + (selected.row+1) + ' · Position ' + (selected.col+1) : 'Select a highlighted gap'}</span></div>
+              <div className="answer-area floating-answer-area"><div className="answer-label"><b>CHOOSE A NUMBER</b><span>{selected ? 'Row ' + (selected.row+1) + ' · Position ' + (selected.col+1) : 'Select a highlighted gap'}</span></div>
                 <div className="number-bank">{options.map((n) => <button key={n} onClick={() => submitNumber(n)}>{n}</button>)}</div>
                 <div className="tools"><button onClick={useHint}><Lightbulb size={16}/> Use a hint <small>−10 XP</small></button><span><Target size={14}/> {mistakes} mistakes</span></div>
               </div>}
