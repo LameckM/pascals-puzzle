@@ -1,3 +1,4 @@
+import React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { Award, Check, CircleHelp, Clock3, Flame, Lightbulb, RotateCcw, Sparkles, Target, Trophy, Volume2, VolumeX, X, Zap } from 'lucide-react';
 import { createPuzzle, DIFFICULTIES, formatTime, getNumberOptions } from './gameEngine';
