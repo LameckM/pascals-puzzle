@@ -69,6 +69,12 @@ export default function App() {
   }, [notice]);
 
   useEffect(() => {
+    if (!feedback) return undefined;
+    const id = window.setTimeout(() => setFeedback(''), 350);
+    return () => window.clearTimeout(id);
+  }, [feedback]);
+
+  useEffect(() => {
     if (!complete || finished) return;
     setFinished(true);
     playTone('win', soundEnabled);
