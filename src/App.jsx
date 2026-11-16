@@ -1,8 +1,32 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Award, Check, CircleHelp, Clock3, Flame, Lightbulb, RotateCcw, Sparkles, Target, Trophy, X, Zap } from 'lucide-react';
+import { Award, Check, CircleHelp, Clock3, Flame, Lightbulb, RotateCcw, Sparkles, Target, Trophy, Volume2, VolumeX, X, Zap } from 'lucide-react';
 import { createPuzzle, DIFFICULTIES, formatTime, getNumberOptions } from './gameEngine';
 
 const KEY = 'pascals-puzzle-progress-v1';
+function playTone(kind, enabled) {
+  if (!enabled) return;
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    const notes = kind === 'correct' ? [660, 880] : kind === 'win' ? [523, 659, 784, 1047] : kind === 'hint' ? [440, 554] : [190, 145];
+    notes.forEach((frequency, index) => {
+      const oscillator = ctx.createOscillator();
+      const gain = ctx.createGain();
+      oscillator.type = kind === 'wrong' ? 'triangle' : 'sine';
+      oscillator.frequency.value = frequency;
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime + index * 0.11);
+      gain.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + index * 0.11 + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + index * 0.11 + 0.18);
+      oscillator.connect(gain);
+      gain.connect(ctx.destination);
+      oscillator.start(ctx.currentTime + index * 0.11);
+      oscillator.stop(ctx.currentTime + index * 0.11 + 0.2);
+    });
+    window.setTimeout(() => ctx.close(), notes.length * 120 + 300);
+  } catch { /* Audio is optional; gameplay should never depend on it. */ }
+}
+
 const emptyStats = { gamesPlayed: 0, puzzlesSolved: 0, totalPoints: 0, bestScore: 0 };
 function loadStats() {
   try { return { ...emptyStats, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; }
@@ -18,6 +42,9 @@ export default function App() {
   const [mistakes, setMistakes] = useState(0);
   const [hints, setHints] = useState(0);
   const [seconds, setSeconds] = useState(0);
+  const [started, setStarted] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [feedback, setFeedback] = useState('');
   const [finished, setFinished] = useState(false);
   const [stats, setStats] = useState(loadStats);
   const [tab, setTab] = useState('play');
@@ -26,13 +53,13 @@ export default function App() {
 
   const options = useMemo(() => getNumberOptions(puzzle), [puzzle]);
   const correctCount = puzzle.missing.filter(({row,col}) => answers[row + '-' + col] === puzzle.solution[row][col]).length;
-  const complete = correctCount === puzzle.total;
+  const complete = started && correctCount === puzzle.total;
 
   useEffect(() => {
-    if (finished || tab !== 'play') return undefined;
+    if (!started || finished || tab !== 'play') return undefined;
     const timer = window.setInterval(() => setSeconds((s) => s + 1), 1000);
     return () => window.clearInterval(timer);
-  }, [finished, tab]);
+  }, [started, finished, tab]);
 
   useEffect(() => { localStorage.setItem(KEY, JSON.stringify(stats)); }, [stats]);
   useEffect(() => {
@@ -44,13 +71,14 @@ export default function App() {
   useEffect(() => {
     if (!complete || finished) return;
     setFinished(true);
+    playTone('win', soundEnabled);
     setStats((old) => ({
       gamesPlayed: old.gamesPlayed + 1,
       puzzlesSolved: old.puzzlesSolved + 1,
       totalPoints: old.totalPoints + score,
       bestScore: Math.max(old.bestScore, score)
     }));
-  }, [complete, finished, score]);
+  }, [complete, finished, score, soundEnabled]);
 
   function newGame(level = difficulty) {
     setDifficulty(level);
@@ -62,6 +90,8 @@ export default function App() {
     setHints(0);
     setSeconds(0);
     setFinished(false);
+    setStarted(false);
+    setFeedback('');
     setTab('play');
   }
 
@@ -69,11 +99,15 @@ export default function App() {
     if (!selected || finished) { setNotice('Select a missing cell first.'); return; }
     const key = selected.row + '-' + selected.col;
     if (puzzle.solution[selected.row][selected.col] !== number) {
+      setFeedback('wrong');
+      playTone('wrong', soundEnabled);
       setMistakes((n) => n + 1);
       setNotice('Not quite. Add the two numbers above the cell.');
       return;
     }
     if (answers[key] !== number) setScore((s) => s + DIFFICULTIES[difficulty].points);
+    setFeedback('correct');
+    playTone('correct', soundEnabled);
     setAnswers((old) => ({ ...old, [key]: number }));
     const next = puzzle.missing.find(({row,col}) => (row !== selected.row || col !== selected.col) && oldValue(answers,row,col,puzzle.solution) === false);
     setSelected(next ? { row: next.row, col: next.col } : null);
@@ -90,6 +124,8 @@ export default function App() {
     setSelected(target);
     setAnswers((old) => ({ ...old, [key]: puzzle.solution[target.row][target.col] }));
     setHints((n) => n + 1);
+    setFeedback('hint');
+    playTone('hint', soundEnabled);
     setScore((s) => Math.max(0, s - 10));
     setNotice('One answer revealed. 10 XP deducted.');
   }
@@ -113,7 +149,8 @@ export default function App() {
 
         <section className="layout">
           <article className="game-card">
-            <div className="card-top"><span className="live"><i/> PUZZLE IN PROGRESS</span><span className="timer"><Clock3 size={15}/>{formatTime(seconds)}</span></div>
+            <div className="card-top"><span className="live"><i/> {started ? (finished ? 'PUZZLE COMPLETE' : 'PUZZLE IN PROGRESS') : 'READY WHEN YOU ARE'}</span><div className="card-actions"><button className="sound-btn" onClick={() => setSoundEnabled((v) => !v)} aria-label={soundEnabled ? 'Mute sound effects' : 'Enable sound effects'}>{soundEnabled ? <Volume2 size={16}/> : <VolumeX size={16}/>}</button><span className="timer"><Clock3 size={15}/>{formatTime(seconds)}</span></div></div>
+            {!started ? <div className="ready-panel"><div className="ready-mark"><Sparkles size={27}/></div><span className="eyebrow">YOUR NEXT CHALLENGE</span><h2>Ready to play?</h2><p>Your triangle will appear and the timer will begin when you press Ready.</p><div className="ready-details"><span>{DIFFICULTIES[difficulty].label} difficulty</span><span>{puzzle.total} missing numbers</span><span>{DIFFICULTIES[difficulty].rows} rows</span></div><button className="primary ready-button" onClick={() => { setStarted(true); setSeconds(0); playTone('hint', soundEnabled); }}>Ready — let's play <Zap size={16}/></button></div> : <>
             <div className="game-title"><div><h2>Complete the triangle</h2><p>Each number is the sum of the two above it.</p></div><button className="round-btn" aria-label="Start a new puzzle" onClick={() => newGame()}><RotateCcw size={17}/></button></div>
             <div className="triangle-scroll"><div className="triangle">
               {puzzle.rows.map((row,r) => <div className="triangle-row" key={r}>{row.map((value,c) => {
@@ -121,7 +158,7 @@ export default function App() {
                 const isGap = value === null;
                 const chosen = selected?.row === r && selected?.col === c;
                 const answer = answers[key];
-                return <button key={key} disabled={!isGap || finished} onClick={() => setSelected({row:r,col:c})} className={'cell ' + (isGap ? 'gap ' : 'fixed ') + (chosen ? 'chosen ' : '') + (answer !== undefined ? 'filled' : '')} aria-label={isGap ? 'Missing number, row ' + (r+1) + ', position ' + (c+1) : 'Given ' + value}>{isGap ? (answer ?? '?') : value}</button>;
+                return <button key={key} disabled={!isGap || finished} onClick={() => setSelected({row:r,col:c})} className={'cell ' + (isGap ? 'gap ' : 'fixed ') + (chosen ? 'chosen ' : '') + (answer !== undefined ? 'filled ' : '') + (feedback ? 'feedback-' + feedback : '')} aria-label={isGap ? 'Missing number, row ' + (r+1) + ', position ' + (c+1) : 'Given ' + value}>{isGap ? (answer ?? '?') : value}</button>;
               })}</div>)}
             </div></div>
             <div className="progress"><div><span>YOUR PROGRESS</span><b>{correctCount}/{puzzle.total}</b></div><div className="track"><i style={{width:(correctCount/puzzle.total*100)+'%'}}/></div></div>
@@ -130,6 +167,7 @@ export default function App() {
                 <div className="number-bank">{options.map((n) => <button key={n} onClick={() => submitNumber(n)}>{n}</button>)}</div>
                 <div className="tools"><button onClick={useHint}><Lightbulb size={16}/> Use a hint <small>−10 XP</small></button><span><Target size={14}/> {mistakes} mistakes</span></div>
               </div>}
+            </>}
           </article>
 
           <aside className="sidebar">
