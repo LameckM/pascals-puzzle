@@ -73,7 +73,7 @@ export default function App() {
       setNotice('Not quite. Add the two numbers above the cell.');
       return;
     }
-    if (answers[key] !== number) setScore((s) => s + Math.max(2, DIFFICULTIES[difficulty].points - hints * 3));
+    if (answers[key] !== number) setScore((s) => s + DIFFICULTIES[difficulty].points);
     setAnswers((old) => ({ ...old, [key]: number }));
     const next = puzzle.missing.find(({row,col}) => (row !== selected.row || col !== selected.col) && oldValue(answers,row,col,puzzle.solution) === false);
     setSelected(next ? { row: next.row, col: next.col } : null);
@@ -90,7 +90,8 @@ export default function App() {
     setSelected(target);
     setAnswers((old) => ({ ...old, [key]: puzzle.solution[target.row][target.col] }));
     setHints((n) => n + 1);
-    setNotice('One answer revealed. Hints reduce points on future answers.');
+    setScore((s) => Math.max(0, s - 10));
+    setNotice('One answer revealed. 10 XP deducted.');
   }
 
   return <div className="app">
